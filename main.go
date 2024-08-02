@@ -1,12 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/gofor-little/env"
 	"github.com/gorilla/mux"
 )
 
@@ -25,22 +24,11 @@ var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err
 
 func main() {
 
-	if err := env.Load(".env"); err != nil {
-		panic(err)
-	}
-
-	broker, _ := env.MustGet("MQTT_HOST")
-	portEnv, _ := env.MustGet("MQTT_PORT")
-	port, _ := strconv.Atoi(portEnv)
-	clientId, _ := env.MustGet("CLIENT_ID")
-	mqttUser, _ := env.MustGet("MQTT_USER")
-	mqttPass, _ := env.MustGet("MQTT_PASS")
-
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", broker, port))
-	opts.SetClientID(clientId)
-	opts.SetUsername(mqttUser)
-	opts.SetPassword(mqttPass)
+	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", "broker.emqx.io", 1883))
+	opts.SetClientID("aizm-server")
+	opts.SetUsername("admin")
+	opts.SetPassword("public")
 	opts.SetDefaultPublishHandler(messagePubHandler)
 	opts.SetCleanSession(true)
 	opts.OnConnect = connectHandler
@@ -53,6 +41,7 @@ func main() {
 	sub(client)
 
 	r := mux.NewRouter()
+	r.HandleFunc("/", Hello).Methods("GET")
 	http.ListenAndServe(":4000", r)
 }
 
@@ -61,4 +50,19 @@ func sub(client mqtt.Client) {
 	token := client.Subscribe(topic, 1, nil)
 	token.Wait()
 	fmt.Printf("Subscribed to topic %s", topic)
+}
+
+func Hello(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	res := Response{
+		Status:  "OK",
+		Message: "Hello from AIZM Server",
+	}
+	json.NewEncoder(w).Encode(res)
+}
+
+type Response struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
 }
