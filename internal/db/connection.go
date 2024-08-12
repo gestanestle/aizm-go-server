@@ -12,11 +12,7 @@ import (
 
 var conn *pgxpool.Pool
 
-// test
-//var url = "postgresql://postgres.yzgljcgjdvtzycdnsxnu:aizm.amin1234@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
-
-// prod
-var url = "postgresql://postgres.lbummzbrrxzywwizdtej:aizm.admin1234@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
+var url = os.Getenv("DATABASE_URL")
 
 func NewCon() *pgxpool.Pool {
 	var err error

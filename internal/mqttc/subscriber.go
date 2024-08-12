@@ -5,20 +5,40 @@ import (
 	"fmt"
 	"gestanestle/aizm-server/internal/db"
 	"gestanestle/aizm-server/internal/models"
+	"math/rand"
+	"os"
+	"strconv"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/ncruces/go-strftime"
 )
 
-const topic = "aizm/conditions"
+var topic = os.Getenv("MQTT_TOPIC")
+var host = os.Getenv("MQTT_HOST")
+var port, _ = strconv.Atoi(os.Getenv("MQTT_PORT"))
+var user = os.Getenv("MQTT_USER")
+var pass = os.Getenv("MQTT_PASS")
+
+func randSeq(n int) string {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
 
 func Subscribe() {
+
+	id := randSeq(10)
+
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", "broker.emqx.io", 1883))
-	opts.SetClientID("aizm-server")
-	opts.SetUsername("admin")
-	opts.SetPassword("public")
+	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", host, port))
+	opts.SetClientID(id)
+	opts.SetUsername(user)
+	opts.SetPassword(pass)
 	opts.SetDefaultPublishHandler(messagePubHandler)
 	opts.SetCleanSession(true)
 	opts.OnConnect = connectHandler
@@ -27,6 +47,9 @@ func Subscribe() {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
+
+	fmt.Printf("MQTT Client ID: %s", id)
+	fmt.Println()
 
 	sub(client)
 }
@@ -41,7 +64,8 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 
 	fmt.Printf("Machine ID: %v ", event.ID)
 
-	time := strftime.Format("%Y-%m-%d %H:%M:%S+00", time.Now())
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	time := strftime.Format("%Y-%m-%d %H:%M:%S+00", time.Now().In(loc))
 
 	event.Time = time
 
